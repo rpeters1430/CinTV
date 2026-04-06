@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useJellyfin } from '../context/JellyfinContext';
-import { getUserViewsApi, getItemsApi, getUserLibraryApi } from '../api/jellyfin';
+import { getUserViewsApi, getItemsApi } from '../api/jellyfin';
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 
 export interface RecentSection {
@@ -20,6 +20,13 @@ const FOLDER_TYPES = new Set([
 const filterPlayableItems = (items: BaseItemDto[]) =>
   items.filter(item => item.Id && !item.IsFolder && !FOLDER_TYPES.has(item.Type ?? ''));
 
+const sortByDateCreatedDesc = (items: BaseItemDto[]) =>
+  [...items].sort((a, b) => {
+    const aTime = a.DateCreated ? Date.parse(a.DateCreated) : 0;
+    const bTime = b.DateCreated ? Date.parse(b.DateCreated) : 0;
+    return bTime - aTime;
+  });
+
 export const useHomeData = () => {
   const { api, userId } = useJellyfin();
   const [libraries, setLibraries] = useState<BaseItemDto[]>([]);
@@ -34,7 +41,6 @@ export const useHomeData = () => {
       try {
         const viewsApi = getUserViewsApi(api);
         const itemsApi = getItemsApi(api);
-        const userLibraryApi = getUserLibraryApi(api);
 
         const viewsRes = await viewsApi.getUserViews({ userId });
         const libraryList = (viewsRes.data.Items ?? []).filter(lib => lib.Id);
@@ -42,63 +48,46 @@ export const useHomeData = () => {
         const recentResults = await Promise.all(
           libraryList.map(async lib => {
             try {
-              const latestRes = await userLibraryApi.getLatestMedia({
-                userId,
-                parentId: lib.Id!,
-                fields: ['PrimaryImageAspectRatio', 'DateCreated', 'ParentId'],
-                enableImages: true,
-                enableUserData: true,
-                imageTypeLimit: 1,
-                limit: 50,
-                groupItems: false,
-              });
-
-              const latestItems = filterPlayableItems(latestRes.data ?? []).slice(0, 20);
-              console.log(
-                '[useHomeData] latest',
-                lib.Name,
-                lib.Id,
-                'count=',
-                latestItems.length,
-                'types=',
-                [...new Set(latestItems.map(item => item.Type ?? 'unknown'))],
-              );
-
-              if (latestItems.length > 0) {
-                return {
-                  libraryId: lib.Id!,
-                  libraryName: lib.Name!,
-                  items: latestItems,
-                };
-              }
-
               const itemsRes = await itemsApi.getItems({
                 userId,
                 parentId: lib.Id!,
                 recursive: true,
-                enableUserData: true,
-                fields: ['PrimaryImageAspectRatio', 'DateCreated', 'ParentId'],
-                imageTypeLimit: 1,
+                fields: ['PrimaryImageAspectRatio', 'SortName', 'DateCreated', 'ParentId'],
+                excludeItemTypes: ['CollectionFolder', 'Folder', 'UserView', 'PlaylistsFolder'],
                 limit: 100,
-                sortBy: ['DateCreated'],
-                sortOrder: ['Descending'],
+                startIndex: 0,
+                sortBy: ['SortName'],
+                sortOrder: ['Ascending'],
               });
 
-              const fallbackItems = filterPlayableItems(itemsRes.data.Items ?? []).slice(0, 20);
+              const scopedItems = sortByDateCreatedDesc(
+                filterPlayableItems(itemsRes.data.Items ?? []),
+              ).slice(0, 20);
               console.log(
-                '[useHomeData] fallback',
+                '[useHomeData] scoped recent',
                 lib.Name,
                 lib.Id,
                 'count=',
-                fallbackItems.length,
+                scopedItems.length,
+                'parentIds=',
+                [...new Set(scopedItems.map(item => item.ParentId ?? 'none'))],
                 'types=',
-                [...new Set(fallbackItems.map(item => item.Type ?? 'unknown'))],
+                [...new Set(scopedItems.map(item => item.Type ?? 'unknown'))],
+              );
+              console.log(
+                'section',
+                lib.Name,
+                scopedItems.map(item => ({
+                  name: item.Name,
+                  parentId: item.ParentId,
+                  type: item.Type,
+                })),
               );
 
               return {
                 libraryId: lib.Id!,
                 libraryName: lib.Name!,
-                items: fallbackItems,
+                items: scopedItems,
               };
             } catch (e: any) {
               console.error('[useHomeData] recent fetch failed for', lib.Name, e?.response?.data ?? e?.message ?? e);

@@ -25,9 +25,6 @@ const LibraryScreen = ({ route, navigation }: Props) => {
   const { serverUrl } = useJellyfin();
   const { items, loading, loadingMore, error, loadMore } = useLibraryItems(libraryId);
 
-  // Filter out folder/container items the server didn't exclude server-side
-  const mediaItems = items.filter(item => !FOLDER_TYPES.has(item.Type ?? '') && !item.IsFolder);
-
   const handlePress = useCallback((item: BaseItemDto) => {
     if (FOLDER_TYPES.has(item.Type ?? '') || item.IsFolder) {
       navigation.push('Library', { libraryId: item.Id!, libraryName: item.Name! });
@@ -83,13 +80,13 @@ const LibraryScreen = ({ route, navigation }: Props) => {
         <Text style={styles.title}>{libraryName}</Text>
       </View>
 
-      {!loading && mediaItems.length === 0 ? (
+      {!loading && items.length === 0 ? (
         <View style={styles.centered}>
           <Text style={styles.emptyText}>No items in this library</Text>
         </View>
       ) : (
         <FlatList
-          data={mediaItems}
+          data={items}
           numColumns={6}
           keyExtractor={item => item.Id!}
           renderItem={renderItem}
