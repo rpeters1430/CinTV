@@ -77,5 +77,6 @@ yarn-error.log
 # Local workspace artifacts
 .bundle/
 .codex
+.codex-cache/
 Archive.zip
 Screenshot_*.png

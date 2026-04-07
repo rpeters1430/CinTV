@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "android:build": "cd android && ./gradlew assembleDebug",
+    "android:test": "cd android && ./gradlew testDebugUnitTest",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "verify:cloud": "bash scripts/codex-cloud-verify.sh"
   },
   "dependencies": {
     "@jellyfin/sdk": "^0.13.0",

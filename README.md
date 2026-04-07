@@ -83,6 +83,36 @@ Then run:
 npm run ios
 ```
 
+## Codex Cloud
+
+Codex Cloud setup scripts run before the agent phase, with internet access enabled. The default Codex `universal` image already includes Node, Java, Gradle, and Ruby, but it does not include the Android SDK, so this repo ships cloud setup helpers under `scripts/`.
+
+In Codex Cloud environment settings, use:
+
+```sh
+bash scripts/codex-cloud-setup.sh
+```
+
+Optional maintenance script for cached containers:
+
+```sh
+bash scripts/codex-cloud-maintenance.sh
+```
+
+Recommended environment package versions in Codex Cloud:
+
+- `Node.js`: `20`
+- `Java`: `17`
+- `Ruby`: `3.4.4`
+
+If you want setup to fail fast on repo validation, add `CODEX_CLOUD_RUN_VERIFY=1` to the environment. That will run:
+
+```sh
+npm run verify:cloud
+```
+
+`verify:cloud` runs ESLint, Jest, and Android Gradle unit/build checks. At the moment, Jest still fails in this repo because `@react-navigation/native` is shipping ESM that the current Jest config does not transform, so enabling `CODEX_CLOUD_RUN_VERIFY=1` will surface that failure until the test configuration is fixed.
+
 ## Troubleshooting
 
 - **Emulator not detected:** Ensure the AVD is fully booted before running `npm run android`. Check with `adb devices`.
