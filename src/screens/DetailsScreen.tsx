@@ -149,6 +149,7 @@ const DetailsScreen = ({ route, navigation }: Props) => {
   const { item, seasons, episodes, selectedSeasonId, selectSeason, loading, episodesLoading, error } = useItemDetails(itemId);
   const [focusedEpisode, setFocusedEpisode] = useState<string | null>(null);
   const [focusedSeason, setFocusedSeason] = useState<string | null>(null);
+  const [isBackFocused, setIsBackFocused] = useState(false);
 
   const openEpisode = useCallback((episode: BaseItemDto) => {
     if (!episode.Id) { return; }
@@ -235,13 +236,30 @@ const DetailsScreen = ({ route, navigation }: Props) => {
   const isSeries = item.Type === 'Series';
   const runtime = formatRuntime(item.RunTimeTicks);
   const currentSeason = seasons.find(season => season.Id === selectedSeasonId) ?? seasons[0] ?? null;
+  const currentSeasonIndex = seasons.findIndex(season => season.Id === currentSeason?.Id);
   const firstEpisode = episodes[0] ?? null;
+  const nextEpisode = episodes.find(ep => !ep.UserData?.Played) ?? firstEpisode;
   const seasonLabel = isSeries ? 'Series' : item.Type ?? 'Title';
   const episodeCountLabel = getEpisodeCountLabel(episodes.length);
   const seasonCountLabel = getSeasonCountLabel(seasons.length);
   const heroSummary = item.Taglines?.[0] ?? item.Studios?.[0]?.Name ?? (isSeries ? 'Series' : item.Type ?? 'Feature');
   const heroSummaryLabel = getHeroSummaryLabel(item);
   const displayTitle = getDisplayTitle(item);
+  const playedPercentage = item.UserData?.PlayedPercentage != null
+    ? Math.round(item.UserData.PlayedPercentage)
+    : null;
+  const hasProgress = playedPercentage != null && playedPercentage > 0 && playedPercentage < 100;
+  const progressBarWidth = hasProgress ? `${playedPercentage}%` : '0%';
+
+  const cycleSeason = () => {
+    if (!isSeries || seasons.length < 2 || currentSeasonIndex < 0) { return; }
+    const nextIndex = (currentSeasonIndex + 1) % seasons.length;
+    const nextSeasonId = seasons[nextIndex]?.Id;
+
+    if (nextSeasonId) {
+      selectSeason(nextSeasonId);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -251,11 +269,13 @@ const DetailsScreen = ({ route, navigation }: Props) => {
 
       <ScrollView contentContainerStyle={styles.content}>
         <TouchableHighlight
-          style={styles.backBtn}
+          style={[styles.backBtn, isBackFocused && styles.backBtnFocused]}
           onPress={() => navigation.goBack()}
+          onFocus={() => setIsBackFocused(true)}
+          onBlur={() => setIsBackFocused(false)}
           underlayColor="rgba(255,255,255,0.12)"
         >
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={[styles.backText, isBackFocused && styles.backTextFocused]}>← Back</Text>
         </TouchableHighlight>
 
         <View style={styles.heroPanel}>
@@ -320,25 +340,33 @@ const DetailsScreen = ({ route, navigation }: Props) => {
               <Text style={styles.overviewMuted}>No summary available.</Text>
             )}
 
+            {hasProgress ? (
+              <View style={styles.progressCard}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressTitle}>Continue watching</Text>
+                  <Text style={styles.progressPercent}>{playedPercentage}%</Text>
+                </View>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: progressBarWidth }]} />
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.actionRow}>
               {isSeries ? (
                 <>
                   <ActionButton
-                    label={firstEpisode ? `Play ${formatEpisodeLabel(firstEpisode) ?? 'Episode 1'}` : 'Play First Episode'}
+                    label={nextEpisode ? `Play ${formatEpisodeLabel(nextEpisode) ?? 'Episode 1'}` : 'Play First Episode'}
                     emphasis="primary"
                     onPress={() => {
-                      if (firstEpisode) {
-                        openEpisode(firstEpisode);
+                      if (nextEpisode) {
+                        openEpisode(nextEpisode);
                       }
                     }}
                   />
                   <ActionButton
-                    label={currentSeason?.Name ?? 'Choose Season'}
-                    onPress={() => {
-                      if (selectedSeasonId) {
-                        selectSeason(selectedSeasonId);
-                      }
-                    }}
+                    label={seasons.length > 1 ? `Next: ${seasons[(currentSeasonIndex + 1) % seasons.length]?.Name ?? 'Season'}` : (currentSeason?.Name ?? 'Season')}
+                    onPress={cycleSeason}
                   />
                 </>
               ) : (
@@ -497,10 +525,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
     backgroundColor: 'rgba(7,16,23,0.72)',
   },
+  backBtnFocused: {
+    borderColor: '#5ed9ff',
+    backgroundColor: 'rgba(94,217,255,0.18)',
+    transform: [{ scale: 1.04 }],
+  },
   backText: {
     color: '#5ed9ff',
     fontSize: 20,
     fontWeight: '700',
+  },
+  backTextFocused: {
+    color: '#fff',
   },
   heroPanel: {
     flexDirection: 'row',
@@ -626,6 +662,41 @@ const styles = StyleSheet.create({
     color: '#8da4b4',
     fontSize: 18,
     marginBottom: 26,
+  },
+  progressCard: {
+    maxWidth: 560,
+    marginBottom: 24,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(94,217,255,0.30)',
+    backgroundColor: 'rgba(10,25,34,0.80)',
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  progressTitle: {
+    color: '#d7e7ef',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  progressPercent: {
+    color: '#5ed9ff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#00a4dc',
   },
   actionRow: {
     flexDirection: 'row',
