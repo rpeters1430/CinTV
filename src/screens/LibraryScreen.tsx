@@ -6,7 +6,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableHighlight,
+  Dimensions,
 } from 'react-native';
+
+const COLUMNS = 5;
+const SCREEN_PADDING = 20;
+const CARD_MARGIN = 10; // matches Poster margin (10 each side = 20 total per card)
+const { width: screenWidth } = Dimensions.get('window');
+const cardWidth = Math.floor((screenWidth - SCREEN_PADDING * 2 - CARD_MARGIN * 2 * COLUMNS) / COLUMNS);
+const cardHeight = Math.floor(cardWidth * 1.5);
 import { useJellyfin } from '../context/JellyfinContext';
 import { useLibraryItems } from '../hooks/useLibraryItems';
 import Poster from '../components/Poster';
@@ -26,7 +34,9 @@ const LibraryScreen = ({ route, navigation }: Props) => {
   const { items, loading, loadingMore, error, loadMore } = useLibraryItems(libraryId);
 
   const handlePress = useCallback((item: BaseItemDto) => {
-    if (FOLDER_TYPES.has(item.Type ?? '') || item.IsFolder) {
+    if (item.Type === 'Series') {
+      navigation.navigate('Details', { itemId: item.Id! });
+    } else if (FOLDER_TYPES.has(item.Type ?? '') || item.IsFolder) {
       navigation.push('Library', { libraryId: item.Id!, libraryName: item.Name! });
     } else {
       navigation.navigate('Details', { itemId: item.Id! });
@@ -39,6 +49,8 @@ const LibraryScreen = ({ route, navigation }: Props) => {
       name={item.Name!}
       serverUrl={serverUrl!}
       onPress={() => handlePress(item)}
+      width={cardWidth}
+      height={cardHeight}
     />
   ), [serverUrl, handlePress]);
 
@@ -87,7 +99,7 @@ const LibraryScreen = ({ route, navigation }: Props) => {
       ) : (
         <FlatList
           data={items}
-          numColumns={6}
+          numColumns={COLUMNS}
           keyExtractor={item => item.Id!}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}

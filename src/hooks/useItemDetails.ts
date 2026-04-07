@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useJellyfin } from '../context/JellyfinContext';
-import { getUserLibraryApi, getTvShowsApi, getItemsApi } from '../api/jellyfin';
+import { getUserLibraryApi, getTvShowsApi } from '../api/jellyfin';
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 
 export const useItemDetails = (itemId: string) => {
@@ -50,20 +50,43 @@ export const useItemDetails = (itemId: string) => {
 
   // Fetch episodes whenever selected season changes
   useEffect(() => {
-    if (!selectedSeasonId || !api || !userId) { return; }
+    if (!item || item.Type !== 'Series' || !selectedSeasonId || !api || !userId) { return; }
     let mounted = true;
     const fetchEpisodes = async () => {
       setEpisodesLoading(true);
       try {
-        const itemsApi = getItemsApi(api);
-        const res = await itemsApi.getItems({
+        const tvApi = getTvShowsApi(api);
+        const res = await tvApi.getEpisodes({
+          seriesId: item.Id!,
           userId,
-          parentId: selectedSeasonId,
-          fields: ['Overview'],
+          seasonId: selectedSeasonId,
+          fields: ['Overview', 'MediaSources', 'MediaStreams'],
           sortBy: ['IndexNumber'],
-          sortOrder: ['Ascending'],
+          limit: 200,
         });
-        if (mounted) { setEpisodes(res.data.Items ?? []); }
+        const episodeItems = res.data.Items ?? [];
+
+        const missingOverviewEpisodes = episodeItems.filter(episode => episode.Id && !episode.Overview);
+        const hydratedEpisodes = missingOverviewEpisodes.length > 0
+          ? await Promise.all(episodeItems.map(async episode => {
+            if (!episode.Id || episode.Overview) { return episode; }
+
+            try {
+              const itemRes = await getUserLibraryApi(api).getItem({
+                userId,
+                itemId: episode.Id,
+              });
+              return {
+                ...episode,
+                ...itemRes.data,
+              };
+            } catch {
+              return episode;
+            }
+          }))
+          : episodeItems;
+
+        if (mounted) { setEpisodes(hydratedEpisodes); }
       } catch {
         // episodes just won't show
       } finally {
@@ -72,7 +95,7 @@ export const useItemDetails = (itemId: string) => {
     };
     fetchEpisodes();
     return () => { mounted = false; };
-  }, [api, userId, selectedSeasonId]);
+  }, [api, item, userId, selectedSeasonId]);
 
   return { item, seasons, episodes, selectedSeasonId, selectSeason, loading, episodesLoading, error };
 };

@@ -15,6 +15,9 @@ interface PosterProps {
   width?: number;
   height?: number;
   imageType?: 'Primary' | 'Thumb' | 'Backdrop';
+  subtitle?: string;
+  seriesName?: string;
+  seriesId?: string;
 }
 
 const Poster: React.FC<PosterProps> = ({
@@ -22,17 +25,39 @@ const Poster: React.FC<PosterProps> = ({
   name,
   serverUrl,
   onPress,
-  width = 160,
-  height = 240,
+  width = 180,
+  height = 260,
   imageType = 'Primary',
+  subtitle,
+  seriesName,
+  seriesId,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const [imageFallback, setImageFallback] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  // 0 = try item's imageType, 1 = try seriesId Primary (or item fallback), 2 = placeholder
+  const [stage, setStage] = useState(0);
 
-  const fallbackType = imageType === 'Primary' ? 'Backdrop' : 'Primary';
-  const activeType = imageFallback ? fallbackType : imageType;
-  const imageUrl = `${serverUrl}/Items/${id}/Images/${activeType}?fillHeight=${height}&fillWidth=${width}&quality=90`;
+  const getImageUrl = () => {
+    const q = `fillHeight=${height}&fillWidth=${width}&quality=90`;
+    if (seriesId) {
+      // For episodes: prefer series poster (portrait) first, fall back to episode thumbnail
+      if (stage === 0) { return `${serverUrl}/Items/${seriesId}/Images/Primary?${q}`; }
+      if (stage === 1) { return `${serverUrl}/Items/${id}/Images/${imageType}?${q}`; }
+    } else {
+      if (stage === 0) { return `${serverUrl}/Items/${id}/Images/${imageType}?${q}`; }
+      if (stage === 1) {
+        const fallbackType = imageType === 'Primary' ? 'Backdrop' : 'Primary';
+        return `${serverUrl}/Items/${id}/Images/${fallbackType}?${q}`;
+      }
+    }
+    return null;
+  };
+
+  const handleError = () => {
+    if (stage < 1) { setStage(stage + 1); }
+    else { setStage(2); }
+  };
+
+  const imageUrl = getImageUrl();
 
   return (
     <TouchableHighlight
@@ -43,7 +68,7 @@ const Poster: React.FC<PosterProps> = ({
       underlayColor="transparent"
     >
       <View style={styles.imageContainer}>
-        {imageError ? (
+        {stage === 2 || !imageUrl ? (
           <View style={styles.placeholder}>
             <Text style={styles.placeholderText} numberOfLines={3}>{name}</Text>
           </View>
@@ -52,14 +77,17 @@ const Poster: React.FC<PosterProps> = ({
             source={{ uri: imageUrl }}
             style={styles.image}
             resizeMode="cover"
-            onError={() => {
-              if (!imageFallback) { setImageFallback(true); }
-              else { setImageError(true); }
-            }}
+            onError={handleError}
           />
         )}
         <View style={styles.overlay}>
           <Text style={styles.title} numberOfLines={1}>{name}</Text>
+          {seriesName ? (
+            <Text style={styles.subtitle} numberOfLines={1}>{seriesName}</Text>
+          ) : null}
+          {subtitle ? (
+            <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+          ) : null}
         </View>
       </View>
     </TouchableHighlight>
@@ -78,7 +106,7 @@ const styles = StyleSheet.create({
   },
   focused: {
     borderColor: '#00a4dc',
-    transform: [{ scale: 1.05 }],
+    elevation: 12,
   },
   imageContainer: {
     flex: 1,
@@ -111,6 +139,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  subtitle: {
+    color: '#aaa',
+    fontSize: 12,
+    marginTop: 2,
   },
 });
 

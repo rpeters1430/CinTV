@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useJellyfin } from '../context/JellyfinContext';
-import { getUserViewsApi, getItemsApi } from '../api/jellyfin';
+import { getUserViewsApi, getItemsApi, getTvShowsApi } from '../api/jellyfin';
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
 
 export interface RecentSection {
@@ -9,88 +9,79 @@ export interface RecentSection {
   items: BaseItemDto[];
 }
 
-const FOLDER_TYPES = new Set([
+const EXCLUDED_TYPES = new Set([
   'CollectionFolder',
   'Folder',
   'UserView',
   'PlaylistsFolder',
   'ManualPlaylistsFolder',
+  'Season',
 ]);
 
 const filterPlayableItems = (items: BaseItemDto[]) =>
-  items.filter(item => item.Id && !item.IsFolder && !FOLDER_TYPES.has(item.Type ?? ''));
-
-const sortByDateCreatedDesc = (items: BaseItemDto[]) =>
-  [...items].sort((a, b) => {
-    const aTime = a.DateCreated ? Date.parse(a.DateCreated) : 0;
-    const bTime = b.DateCreated ? Date.parse(b.DateCreated) : 0;
-    return bTime - aTime;
-  });
+  items.filter(item => item.Id && !EXCLUDED_TYPES.has(item.Type ?? ''));
 
 export const useHomeData = () => {
-  const { api, userId } = useJellyfin();
+  const { api, userId, serverUrl, accessToken } = useJellyfin();
   const [libraries, setLibraries] = useState<BaseItemDto[]>([]);
+  const [continueWatching, setContinueWatching] = useState<BaseItemDto[]>([]);
+  const [nextUp, setNextUp] = useState<BaseItemDto[]>([]);
   const [recentSections, setRecentSections] = useState<RecentSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    const fetch = async () => {
-      if (!api || !userId) { return; }
+    const loadData = async () => {
+      if (!api || !userId || !serverUrl || !accessToken) { return; }
       try {
         const viewsApi = getUserViewsApi(api);
         const itemsApi = getItemsApi(api);
+        const tvApi = getTvShowsApi(api);
 
-        const viewsRes = await viewsApi.getUserViews({ userId });
+        const [viewsRes, resumeRes, nextUpRes] = await Promise.all([
+          viewsApi.getUserViews({ userId }),
+          itemsApi.getItems({
+            userId,
+            filters: ['IsResumable'],
+            mediaTypes: ['Video'],
+            recursive: true,
+            fields: ['PrimaryImageAspectRatio', 'UserData', 'SeriesInfo'],
+            limit: 20,
+            sortBy: ['DatePlayed'],
+            sortOrder: ['Descending'],
+          }),
+          tvApi.getNextUp({
+            userId,
+            limit: 20,
+            fields: ['PrimaryImageAspectRatio', 'SeriesInfo'],
+          }),
+        ]);
+
         const libraryList = (viewsRes.data.Items ?? []).filter(lib => lib.Id);
 
         const recentResults = await Promise.all(
           libraryList.map(async lib => {
             try {
-              const itemsRes = await itemsApi.getItems({
-                userId,
-                parentId: lib.Id!,
-                recursive: true,
-                fields: ['PrimaryImageAspectRatio', 'SortName', 'DateCreated', 'ParentId'],
-                excludeItemTypes: ['CollectionFolder', 'Folder', 'UserView', 'PlaylistsFolder'],
-                limit: 100,
-                startIndex: 0,
-                sortBy: ['SortName'],
-                sortOrder: ['Ascending'],
+              const params = new URLSearchParams({
+                ParentId: lib.Id!,
+                Recursive: 'true',
+                Limit: '20',
+                SortBy: 'DateCreated',
+                SortOrder: 'Descending',
+                Fields: 'PrimaryImageAspectRatio,DateCreated',
+                IncludeItemTypes: 'Movie,Episode,Video',
               });
-
-              const scopedItems = sortByDateCreatedDesc(
-                filterPlayableItems(itemsRes.data.Items ?? []),
-              ).slice(0, 20);
-              console.log(
-                '[useHomeData] scoped recent',
-                lib.Name,
-                lib.Id,
-                'count=',
-                scopedItems.length,
-                'parentIds=',
-                [...new Set(scopedItems.map(item => item.ParentId ?? 'none'))],
-                'types=',
-                [...new Set(scopedItems.map(item => item.Type ?? 'unknown'))],
+              const res = await fetch(
+                `${serverUrl}/Users/${userId}/Items?${params.toString()}`,
+                { headers: { 'X-Emby-Token': accessToken, Accept: 'application/json' } },
               );
-              console.log(
-                'section',
-                lib.Name,
-                scopedItems.map(item => ({
-                  name: item.Name,
-                  parentId: item.ParentId,
-                  type: item.Type,
-                })),
-              );
-
-              return {
-                libraryId: lib.Id!,
-                libraryName: lib.Name!,
-                items: scopedItems,
-              };
+              if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
+              const data = await res.json();
+              const items = filterPlayableItems(data.Items ?? []);
+              return { libraryId: lib.Id!, libraryName: lib.Name!, items };
             } catch (e: any) {
-              console.error('[useHomeData] recent fetch failed for', lib.Name, e?.response?.data ?? e?.message ?? e);
+              console.error('[useHomeData] recent fetch failed for', lib.Name, e?.message ?? e);
               return { libraryId: lib.Id!, libraryName: lib.Name!, items: [] as BaseItemDto[] };
             }
           }),
@@ -98,6 +89,8 @@ export const useHomeData = () => {
 
         if (!mounted) { return; }
         setLibraries(libraryList);
+        setContinueWatching(filterPlayableItems(resumeRes.data.Items ?? []));
+        setNextUp(nextUpRes.data.Items ?? []);
         setRecentSections(recentResults.filter(s => s.items.length > 0));
       } catch (e: any) {
         console.error('[useHomeData] error:', e?.response?.data ?? e?.message ?? e);
@@ -106,9 +99,9 @@ export const useHomeData = () => {
         if (mounted) { setLoading(false); }
       }
     };
-    fetch();
+    loadData();
     return () => { mounted = false; };
-  }, [api, userId]);
+  }, [api, userId, serverUrl, accessToken]);
 
-  return { libraries, recentSections, loading, error };
+  return { libraries, continueWatching, nextUp, recentSections, loading, error };
 };
