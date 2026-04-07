@@ -15,12 +15,29 @@ ANDROID_CMDLINE_TOOLS_ZIP="commandlinetools-linux-${ANDROID_CMDLINE_TOOLS_VERSIO
 ANDROID_CMDLINE_TOOLS_URL="${ANDROID_CMDLINE_TOOLS_URL:-https://dl.google.com/android/repository/${ANDROID_CMDLINE_TOOLS_ZIP}}"
 ANDROID_CMDLINE_TOOLS_DIR="$ANDROID_SDK_ROOT/cmdline-tools/latest"
 PROFILE_FILE="$HOME/.bashrc"
+PERSIST_ENVIRONMENT="${CODEX_CLOUD_PERSIST_ENV:-0}"
 
 export ANDROID_SDK_ROOT ANDROID_HOME
 export PATH="$ANDROID_CMDLINE_TOOLS_DIR/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
 log() {
   printf '==> %s\n' "$1"
+}
+
+require_command() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    printf 'Missing required command: %s\n' "$cmd" >&2
+    exit 1
+  fi
+}
+
+preflight_checks() {
+  log "Running preflight checks"
+  require_command npm
+  require_command java
+  require_command curl
+  require_command unzip
 }
 
 append_profile_export() {
@@ -104,6 +121,12 @@ warm_gradle() {
 }
 
 persist_environment() {
+  if [[ "$PERSIST_ENVIRONMENT" != "1" ]]; then
+    log "Skipping shell profile updates (set CODEX_CLOUD_PERSIST_ENV=1 to enable)"
+    return
+  fi
+
+  log "Persisting Android environment to $PROFILE_FILE"
   append_profile_export "export ANDROID_SDK_ROOT=\"$ANDROID_SDK_ROOT\""
   append_profile_export "export ANDROID_HOME=\"$ANDROID_HOME\""
   append_profile_export "export PATH=\"$ANDROID_CMDLINE_TOOLS_DIR/bin:$ANDROID_SDK_ROOT/platform-tools:\$PATH\""
@@ -111,6 +134,7 @@ persist_environment() {
 
 main() {
   log "Using ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+  preflight_checks
   mkdir -p "$ANDROID_SDK_ROOT"
   persist_environment
   install_node_dependencies
