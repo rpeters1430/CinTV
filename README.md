@@ -105,6 +105,8 @@ Recommended environment package versions in Codex Cloud:
 - `Java`: `17`
 - `Ruby`: `3.4.4`
 
+This setup is intended for Android validation on Linux cloud hosts. It skips Bundler by default on non-Darwin machines. If you explicitly want Ruby dependencies installed anyway, set `CODEX_CLOUD_INSTALL_RUBY=1`.
+
 If you want setup to fail fast on repo validation, add `CODEX_CLOUD_RUN_VERIFY=1` to the environment. That will run:
 
 ```sh

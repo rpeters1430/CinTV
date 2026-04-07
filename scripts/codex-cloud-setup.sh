@@ -19,6 +19,10 @@ PROFILE_FILE="$HOME/.bashrc"
 export ANDROID_SDK_ROOT ANDROID_HOME
 export PATH="$ANDROID_CMDLINE_TOOLS_DIR/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
+log() {
+  printf '==> %s\n' "$1"
+}
+
 append_profile_export() {
   local line="$1"
 
@@ -29,6 +33,7 @@ append_profile_export() {
 }
 
 install_node_dependencies() {
+  log "Installing Node dependencies"
   cd "$ROOT_DIR"
 
   if [[ -f package-lock.json ]]; then
@@ -39,10 +44,16 @@ install_node_dependencies() {
 }
 
 install_ruby_dependencies() {
+  if [[ "${CODEX_CLOUD_INSTALL_RUBY:-0}" != "1" && "$(uname -s)" != "Darwin" ]]; then
+    log "Skipping Bundler install on non-Darwin cloud host"
+    return
+  fi
+
   if [[ ! -f "$ROOT_DIR/Gemfile" ]]; then
     return
   fi
 
+  log "Installing Ruby dependencies"
   cd "$ROOT_DIR"
   bundle config set --local path vendor/bundle
   bundle install
@@ -50,9 +61,11 @@ install_ruby_dependencies() {
 
 install_android_cmdline_tools() {
   if [[ -x "$ANDROID_CMDLINE_TOOLS_DIR/bin/sdkmanager" ]]; then
+    log "Android command-line tools already installed"
     return
   fi
 
+  log "Installing Android command-line tools"
   rm -rf "$ANDROID_SDK_ROOT/cmdline-tools"
   mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
 
@@ -67,6 +80,7 @@ install_android_cmdline_tools() {
 }
 
 install_android_packages() {
+  log "Installing Android SDK packages"
   yes | sdkmanager --licenses >/dev/null
   sdkmanager \
     "platform-tools" \
@@ -77,12 +91,14 @@ install_android_packages() {
 }
 
 write_android_local_properties() {
+  log "Writing android/local.properties"
   cat >"$ANDROID_DIR/local.properties" <<EOF
 sdk.dir=$ANDROID_SDK_ROOT
 EOF
 }
 
 warm_gradle() {
+  log "Warming Gradle"
   cd "$ANDROID_DIR"
   ./gradlew --no-daemon help
 }
@@ -94,6 +110,7 @@ persist_environment() {
 }
 
 main() {
+  log "Using ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
   mkdir -p "$ANDROID_SDK_ROOT"
   persist_environment
   install_node_dependencies
