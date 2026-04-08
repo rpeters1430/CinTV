@@ -533,16 +533,20 @@ const CastSection = ({
   serverUrl: string;
 }) => {
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const directorNames = directors
+    .map(d => d.Name)
+    .filter((name): name is string => Boolean(name));
+
   return (
     <View style={styles.extraPanel}>
       <View style={styles.extraPanelHeader}>
         <Text style={styles.sectionEyebrow}>People</Text>
         <Text style={styles.sectionTitle}>Cast &amp; Crew</Text>
       </View>
-      {directors.length > 0 && (
+      {directorNames.length > 0 && (
         <View style={styles.directorRow}>
           <Text style={styles.directorLabel}>Directed by </Text>
-          <Text style={styles.directorName}>{directors.map(d => d.Name).join(', ')}</Text>
+          <Text style={styles.directorName}>{directorNames.join(', ')}</Text>
         </View>
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
