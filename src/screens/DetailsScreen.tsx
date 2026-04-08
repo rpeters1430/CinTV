@@ -550,16 +550,17 @@ const CastSection = ({
         </View>
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
-        {actors.map(person => {
-          const isFocused = focusedId === person.Id;
+        {actors.map((person, index) => {
+          const focusKey = person.Id ?? person.Name ?? `person-${index}`;
+          const isFocused = focusedId === focusKey;
           const imgUrl = person.Id
             ? `${serverUrl}/Items/${person.Id}/Images/Primary?fillHeight=200&fillWidth=140&quality=85`
             : null;
           return (
-            <View key={person.Id ?? person.Name} style={[styles.castCard, isFocused && styles.castCardFocused]}>
+            <View key={focusKey} style={[styles.castCard, isFocused && styles.castCardFocused]}>
               <TouchableHighlight
                 style={styles.castThumbBtn}
-                onFocus={() => setFocusedId(person.Id ?? null)}
+                onFocus={() => setFocusedId(focusKey)}
                 onBlur={() => setFocusedId(null)}
                 onPress={() => {}}
                 underlayColor="transparent"
