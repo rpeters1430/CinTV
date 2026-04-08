@@ -621,16 +621,17 @@ const SimilarSection = ({
         <Text style={styles.sectionTitle}>More Like This</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
-        {items.map(sim => {
-          const isFocused = focusedId === sim.Id;
+        {items.map((sim, index) => {
+          const itemKey = `${sim.Id ?? sim.Name ?? index}`;
+          const isFocused = focusedId === itemKey;
           const imgUrl = sim.Id
             ? `${serverUrl}/Items/${sim.Id}/Images/Primary?fillHeight=270&fillWidth=180&quality=85`
             : null;
           return (
             <TouchableHighlight
-              key={sim.Id}
+              key={itemKey}
               style={[styles.similarCard, isFocused && styles.similarCardFocused]}
-              onFocus={() => setFocusedId(sim.Id ?? null)}
+              onFocus={() => setFocusedId(itemKey)}
               onBlur={() => setFocusedId(null)}
               onPress={() => sim.Id && onPress(sim.Id)}
               underlayColor="transparent"
