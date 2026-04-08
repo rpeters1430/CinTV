@@ -17,7 +17,6 @@ import type { NavProp } from '../types/navigation';
 interface Props {
   navigation: NavProp<'Home'>;
 }
-
 const HomeScreen = ({ navigation }: Props) => {
   const { serverUrl, logout } = useJellyfin();
   const { libraries, continueWatching, nextUp, recentSections, loading, error } = useHomeData();
@@ -86,13 +85,22 @@ const HomeScreen = ({ navigation }: Props) => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>CinTV</Text>
-        <TouchableHighlight
-          onPress={logout}
-          style={styles.logoutBtn}
-          underlayColor="#ff4444"
-        >
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableHighlight>
+        <View style={styles.headerActions}>
+          <TouchableHighlight
+            onPress={() => navigation.navigate('Settings')}
+            style={styles.headerBtn}
+            underlayColor="rgba(255,255,255,0.12)"
+          >
+            <Text style={styles.headerBtnText}>⚙ Settings</Text>
+          </TouchableHighlight>
+          <TouchableHighlight
+            onPress={logout}
+            style={[styles.headerBtn, styles.logoutBtn]}
+            underlayColor="#ff4444"
+          >
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableHighlight>
+        </View>
       </View>
 
       {libraries.length === 0 ? (
@@ -181,6 +189,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
     paddingHorizontal: 10,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  headerBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  headerBtnText: {
+    color: '#d7e7ef',
+    fontSize: 18,
+    fontWeight: '600',
   },
   title: {
     fontSize: 42,

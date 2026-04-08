@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,7 @@ const LibraryScreen = ({ route, navigation }: Props) => {
   const { libraryId, libraryName } = route.params;
   const { serverUrl } = useJellyfin();
   const { items, loading, loadingMore, error, loadMore } = useLibraryItems(libraryId);
+  const flatListRef = useRef<FlatList>(null);
 
   const handlePress = useCallback((item: BaseItemDto) => {
     if (item.Type === 'Series') {
@@ -43,12 +44,15 @@ const LibraryScreen = ({ route, navigation }: Props) => {
     }
   }, [navigation]);
 
-  const renderItem = useCallback(({ item }: { item: BaseItemDto }) => (
+  const renderItem = useCallback(({ item, index }: { item: BaseItemDto; index: number }) => (
     <Poster
       id={item.Id!}
       name={item.Name!}
       serverUrl={serverUrl!}
       onPress={() => handlePress(item)}
+      onFocusFn={() => {
+        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      }}
       width={cardWidth}
       height={cardHeight}
     />
@@ -98,6 +102,7 @@ const LibraryScreen = ({ route, navigation }: Props) => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={items}
           numColumns={COLUMNS}
           keyExtractor={item => item.Id!}
@@ -106,6 +111,7 @@ const LibraryScreen = ({ route, navigation }: Props) => {
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
+          onScrollToIndexFailed={() => {}}
         />
       )}
     </View>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useJellyfin } from '../context/JellyfinContext';
-import { getUserLibraryApi, getTvShowsApi } from '../api/jellyfin';
-import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
+import { getUserLibraryApi, getTvShowsApi, getLibraryApi } from '../api/jellyfin';
+import type { BaseItemDto, BaseItemPerson } from '@jellyfin/sdk/lib/generated-client';
 
 export const useItemDetails = (itemId: string) => {
   const { api, userId } = useJellyfin();
@@ -9,6 +9,8 @@ export const useItemDetails = (itemId: string) => {
   const [seasons, setSeasons] = useState<BaseItemDto[]>([]);
   const [episodes, setEpisodes] = useState<BaseItemDto[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const [cast, setCast] = useState<BaseItemPerson[]>([]);
+  const [similarItems, setSimilarItems] = useState<BaseItemDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [episodesLoading, setEpisodesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,7 @@ export const useItemDetails = (itemId: string) => {
         const data = response.data;
         if (!mounted) { return; }
         setItem(data);
+        setCast(data.People ?? []);
 
         if (data.Type === 'Series') {
           const tvApi = getTvShowsApi(api);
@@ -33,6 +36,21 @@ export const useItemDetails = (itemId: string) => {
           if (seasonList.length > 0 && seasonList[0].Id) {
             setSelectedSeasonId(seasonList[0].Id);
           }
+        }
+
+        // Fetch similar items
+        try {
+          const libApi = getLibraryApi(api);
+          const similarRes = await libApi.getSimilarItems({
+            itemId,
+            userId,
+            limit: 12,
+          });
+          if (mounted) {
+            setSimilarItems(similarRes.data.Items ?? []);
+          }
+        } catch {
+          // similar items are non-critical
         }
       } catch {
         if (mounted) { setError('Failed to load details'); }
@@ -97,5 +115,5 @@ export const useItemDetails = (itemId: string) => {
     return () => { mounted = false; };
   }, [api, item, userId, selectedSeasonId]);
 
-  return { item, seasons, episodes, selectedSeasonId, selectSeason, loading, episodesLoading, error };
+  return { item, seasons, episodes, selectedSeasonId, selectSeason, cast, similarItems, loading, episodesLoading, error };
 };

@@ -7,6 +7,7 @@ export type RootStackParamList = {
   Library: { libraryId: string; libraryName: string };
   Details: { itemId: string };
   Player: { itemId: string; title: string };
+  Settings: undefined;
 };
 
 export type NavProp<T extends keyof RootStackParamList> = NativeStackNavigationProp<RootStackParamList, T>;

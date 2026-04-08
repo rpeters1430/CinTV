@@ -12,6 +12,7 @@ interface PosterProps {
   name: string;
   serverUrl: string;
   onPress: () => void;
+  onFocusFn?: () => void;
   width?: number;
   height?: number;
   imageType?: 'Primary' | 'Thumb' | 'Backdrop';
@@ -25,6 +26,7 @@ const Poster: React.FC<PosterProps> = ({
   name,
   serverUrl,
   onPress,
+  onFocusFn,
   width = 180,
   height = 260,
   imageType = 'Primary',
@@ -63,7 +65,7 @@ const Poster: React.FC<PosterProps> = ({
     <TouchableHighlight
       style={[styles.container, { width, height }, isFocused && styles.focused]}
       onPress={onPress}
-      onFocus={() => setIsFocused(true)}
+      onFocus={() => { setIsFocused(true); onFocusFn?.(); }}
       onBlur={() => setIsFocused(false)}
       underlayColor="transparent"
     >
