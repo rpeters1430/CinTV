@@ -17,7 +17,6 @@ import type { NavProp } from '../types/navigation';
 interface Props {
   navigation: NavProp<'Home'>;
 }
-
 const HomeScreen = ({ navigation }: Props) => {
   const { serverUrl, logout } = useJellyfin();
   const { libraries, continueWatching, nextUp, recentSections, loading, error } = useHomeData();
@@ -86,13 +85,22 @@ const HomeScreen = ({ navigation }: Props) => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>CinTV</Text>
-        <TouchableHighlight
-          onPress={logout}
-          style={styles.logoutBtn}
-          underlayColor="#ff4444"
-        >
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableHighlight>
+        <View style={styles.headerActions}>
+          <TouchableHighlight
+            onPress={() => navigation.navigate('Settings')}
+            style={styles.headerBtn}
+            underlayColor="rgba(255,255,255,0.12)"
+          >
+            <Text style={styles.headerBtnText}>⚙ Settings</Text>
+          </TouchableHighlight>
+          <TouchableHighlight
+            onPress={logout}
+            style={[styles.headerBtn, styles.logoutBtn]}
+            underlayColor="#ff4444"
+          >
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableHighlight>
+        </View>
       </View>
 
       {libraries.length === 0 ? (
@@ -163,17 +171,17 @@ const HomeScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#101010',
+    backgroundColor: '#0D1117',
   },
   content: {
-    padding: 20,
+    padding: 24,
     paddingBottom: 60,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#101010',
+    backgroundColor: '#0D1117',
   },
   header: {
     flexDirection: 'row',
@@ -182,41 +190,63 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     paddingHorizontal: 10,
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  headerBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  headerBtnText: {
+    color: '#cde6f5',
+    fontSize: 18,
+    fontWeight: '600',
+  },
   title: {
     fontSize: 42,
-    fontWeight: 'bold',
-    color: '#00a4dc',
+    fontWeight: '800',
+    color: '#4fc3f7',
+    letterSpacing: 0.5,
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#e0f4ff',
     marginBottom: 10,
     marginLeft: 10,
+    letterSpacing: 0.2,
   },
   recentSection: {
-    marginTop: 30,
+    marginTop: 32,
   },
   logoutBtn: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239,83,80,0.45)',
+    backgroundColor: 'rgba(239,83,80,0.10)',
   },
   logoutText: {
-    color: '#fff',
+    color: '#ef9a9a',
     fontSize: 18,
+    fontWeight: '600',
   },
   listContent: {
     paddingVertical: 10,
   },
   errorText: {
-    color: '#ff4444',
+    color: '#ef5350',
     fontSize: 20,
   },
   emptyText: {
-    color: '#666',
+    color: '#78909c',
     fontSize: 20,
     textAlign: 'center',
     marginTop: 40,

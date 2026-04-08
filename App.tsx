@@ -7,6 +7,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import DetailsScreen from './src/screens/DetailsScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import type { RootStackParamList } from './src/types/navigation';
 
@@ -33,6 +34,7 @@ const RootStack = () => {
                     <Stack.Screen name="Library" component={LibraryScreen} />
                     <Stack.Screen name="Details" component={DetailsScreen} />
                     <Stack.Screen name="Player" component={PlayerScreen} />
+                    <Stack.Screen name="Settings" component={SettingsScreen} />
                 </>
             )}
         </Stack.Navigator>
@@ -54,7 +56,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#101010',
+        backgroundColor: '#0D1117',
     },
 });
 

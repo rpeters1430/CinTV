@@ -8,11 +8,13 @@ import {
   TouchableHighlight,
   ScrollView,
   FlatList,
+  Alert,
 } from 'react-native';
 import { useItemDetails } from '../hooks/useItemDetails';
-import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client';
+import type { BaseItemDto, BaseItemPerson } from '@jellyfin/sdk/lib/generated-client';
 import type { NavProp, RouteProps } from '../types/navigation';
 import { useJellyfin } from '../context/JellyfinContext';
+import { getLibraryApi } from '../api/jellyfin';
 
 interface Props {
   navigation: NavProp<'Details'>;
@@ -90,7 +92,7 @@ const getEpisodeQuality = (episode: BaseItemDto) => {
 };
 
 const getHeroSummaryLabel = (item: BaseItemDto) => {
-  if (item.Studios?.length) { return 'Network'; }
+  if (item.Studios?.length) { return 'Studio'; }
   if (item.Taglines?.length) { return 'Tagline'; }
   return 'Details';
 };
@@ -111,28 +113,43 @@ const ActionButton = ({
   onPress,
 }: {
   label: string;
-  emphasis?: 'primary' | 'secondary';
+  emphasis?: 'primary' | 'secondary' | 'destructive';
   onPress: () => void;
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const isPrimary = emphasis === 'primary';
+  const isDestructive = emphasis === 'destructive';
+
+  const btnStyle = isPrimary
+    ? styles.actionButtonPrimary
+    : isDestructive
+    ? styles.actionButtonDestructive
+    : styles.actionButtonSecondary;
+
+  const txtStyle = isPrimary
+    ? styles.actionButtonTextPrimary
+    : isDestructive
+    ? styles.actionButtonTextDestructive
+    : styles.actionButtonTextSecondary;
+
+  const underlayColor = isPrimary ? '#42d9ff' : isDestructive ? '#ff6666' : 'rgba(255,255,255,0.16)';
 
   return (
     <TouchableHighlight
       style={[
         styles.actionButton,
-        isPrimary ? styles.actionButtonPrimary : styles.actionButtonSecondary,
+        btnStyle,
         isFocused && styles.actionButtonFocused,
       ]}
       onPress={onPress}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
-      underlayColor={isPrimary ? '#42d9ff' : 'rgba(255,255,255,0.16)'}
+      underlayColor={underlayColor}
     >
       <Text
         style={[
           styles.actionButtonText,
-          isPrimary ? styles.actionButtonTextPrimary : styles.actionButtonTextSecondary,
+          txtStyle,
         ]}
       >
         {label}
@@ -145,8 +162,8 @@ const EpisodeSeparator = () => <View style={styles.episodeSpacer} />;
 
 const DetailsScreen = ({ route, navigation }: Props) => {
   const { itemId } = route.params;
-  const { serverUrl } = useJellyfin();
-  const { item, seasons, episodes, selectedSeasonId, selectSeason, loading, episodesLoading, error } = useItemDetails(itemId);
+  const { serverUrl, api } = useJellyfin();
+  const { item, seasons, episodes, selectedSeasonId, selectSeason, cast, similarItems, loading, episodesLoading, error } = useItemDetails(itemId);
   const [focusedEpisode, setFocusedEpisode] = useState<string | null>(null);
   const [focusedSeason, setFocusedSeason] = useState<string | null>(null);
   const [isBackFocused, setIsBackFocused] = useState(false);
@@ -245,11 +262,15 @@ const DetailsScreen = ({ route, navigation }: Props) => {
   const heroSummary = item.Taglines?.[0] ?? item.Studios?.[0]?.Name ?? (isSeries ? 'Series' : item.Type ?? 'Feature');
   const heroSummaryLabel = getHeroSummaryLabel(item);
   const displayTitle = getDisplayTitle(item);
+  const seriesStatus = isSeries ? (item.Status ?? null) : null;
   const playedPercentage = item.UserData?.PlayedPercentage != null
     ? Math.round(item.UserData.PlayedPercentage)
     : null;
   const hasProgress = playedPercentage != null && playedPercentage > 0 && playedPercentage < 100;
   const progressBarWidth = hasProgress ? `${playedPercentage}%` : '0%';
+
+  const actors = cast.filter(p => p.Type === 'Actor').slice(0, 12);
+  const directors = cast.filter(p => p.Type === 'Director');
 
   const cycleSeason = () => {
     if (!isSeries || seasons.length < 2 || currentSeasonIndex < 0) { return; }
@@ -259,6 +280,29 @@ const DetailsScreen = ({ route, navigation }: Props) => {
     if (nextSeasonId) {
       selectSeason(nextSeasonId);
     }
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Item',
+      `Are you sure you want to delete "${item.Name ?? 'this item'}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!api || !item.Id) { return; }
+            try {
+              await getLibraryApi(api).deleteItem({ itemId: item.Id });
+              navigation.goBack();
+            } catch {
+              Alert.alert('Error', 'Failed to delete item. Check server permissions.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -313,6 +357,16 @@ const DetailsScreen = ({ route, navigation }: Props) => {
                     <Text style={styles.statLabel}>Episodes</Text>
                     <Text style={styles.statValue}>{episodeCountLabel}</Text>
                   </View>
+                  {seriesStatus ? (
+                    <View style={styles.statCard}>
+                      <Text style={styles.statLabel}>Status</Text>
+                      <Text style={[
+                        styles.statValue,
+                        seriesStatus === 'Continuing' && styles.statValueContinuing,
+                        seriesStatus === 'Ended' && styles.statValueEnded,
+                      ]}>{seriesStatus}</Text>
+                    </View>
+                  ) : null}
                 </>
               ) : (
                 <View style={styles.statCard}>
@@ -370,11 +424,18 @@ const DetailsScreen = ({ route, navigation }: Props) => {
                   />
                 </>
               ) : (
-                <ActionButton
-                  label="Play Now"
-                  emphasis="primary"
-                  onPress={() => navigation.navigate('Player', { itemId: item.Id!, title: item.Name ?? '' })}
-                />
+                <>
+                  <ActionButton
+                    label="Play Now"
+                    emphasis="primary"
+                    onPress={() => navigation.navigate('Player', { itemId: item.Id!, title: item.Name ?? '' })}
+                  />
+                  <ActionButton
+                    label="Delete"
+                    emphasis="destructive"
+                    onPress={handleDelete}
+                  />
+                </>
               )}
             </View>
           </View>
@@ -441,8 +502,177 @@ const DetailsScreen = ({ route, navigation }: Props) => {
             )}
           </View>
         )}
+
+        {actors.length > 0 && (
+          <CastSection
+            actors={actors}
+            directors={directors}
+            serverUrl={serverUrl!}
+          />
+        )}
+
+        {similarItems.length > 0 && (
+          <SimilarSection
+            items={similarItems}
+            serverUrl={serverUrl!}
+            onPress={id => navigation.push('Details', { itemId: id })}
+          />
+        )}
       </ScrollView>
     </View>
+  );
+};
+
+const CastSection = ({
+  actors,
+  directors,
+  serverUrl,
+}: {
+  actors: BaseItemPerson[];
+  directors: BaseItemPerson[];
+  serverUrl: string;
+}) => {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const directorNames = directors
+    .map(d => d.Name)
+    .filter((name): name is string => Boolean(name));
+
+  return (
+    <View style={styles.extraPanel}>
+      <View style={styles.extraPanelHeader}>
+        <Text style={styles.sectionEyebrow}>People</Text>
+        <Text style={styles.sectionTitle}>Cast &amp; Crew</Text>
+      </View>
+      {directorNames.length > 0 && (
+        <View style={styles.directorRow}>
+          <Text style={styles.directorLabel}>Directed by </Text>
+          <Text style={styles.directorName}>{directorNames.join(', ')}</Text>
+        </View>
+      )}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
+        {actors.map((person, index) => {
+          const focusKey = person.Id ?? person.Name ?? `person-${index}`;
+          const isFocused = focusedId === focusKey;
+          const imgUrl = person.Id
+            ? `${serverUrl}/Items/${person.Id}/Images/Primary?fillHeight=200&fillWidth=140&quality=85`
+            : null;
+          return (
+            <View key={focusKey} style={[styles.castCard, isFocused && styles.castCardFocused]}>
+              <TouchableHighlight
+                style={styles.castThumbBtn}
+                onFocus={() => setFocusedId(focusKey)}
+                onBlur={() => setFocusedId(null)}
+                onPress={() => {}}
+                underlayColor="transparent"
+              >
+                <View>
+                  {imgUrl ? (
+                    <CastImage uri={imgUrl} name={person.Name ?? '?'} />
+                  ) : (
+                    <View style={styles.castThumbPlaceholder}>
+                      <Text style={styles.castThumbInitial}>{(person.Name ?? '?')[0]}</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableHighlight>
+              <Text style={styles.castName} numberOfLines={2}>{person.Name}</Text>
+              {person.Role ? <Text style={styles.castRole} numberOfLines={1}>{person.Role}</Text> : null}
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+};
+
+const CastImage = ({ uri, name }: { uri: string; name: string }) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <View style={styles.castThumbPlaceholder}>
+        <Text style={styles.castThumbInitial}>{name[0]}</Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.castThumb}
+      resizeMode="cover"
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+const SimilarSection = ({
+  items,
+  serverUrl,
+  onPress,
+}: {
+  items: BaseItemDto[];
+  serverUrl: string;
+  onPress: (id: string) => void;
+}) => {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  return (
+    <View style={styles.extraPanel}>
+      <View style={styles.extraPanelHeader}>
+        <Text style={styles.sectionEyebrow}>Discover</Text>
+        <Text style={styles.sectionTitle}>More Like This</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
+        {items.map((sim, index) => {
+          const itemKey = `${sim.Id ?? sim.Name ?? index}`;
+          const isFocused = focusedId === itemKey;
+          const imgUrl = sim.Id
+            ? `${serverUrl}/Items/${sim.Id}/Images/Primary?fillHeight=270&fillWidth=180&quality=85`
+            : null;
+          return (
+            <TouchableHighlight
+              key={itemKey}
+              style={[styles.similarCard, isFocused && styles.similarCardFocused]}
+              onFocus={() => setFocusedId(itemKey)}
+              onBlur={() => setFocusedId(null)}
+              onPress={() => sim.Id && onPress(sim.Id)}
+              underlayColor="transparent"
+            >
+              <View>
+                {imgUrl ? (
+                  <SimilarImage uri={imgUrl} name={sim.Name ?? ''} />
+                ) : (
+                  <View style={styles.similarThumbPlaceholder}>
+                    <Text style={styles.similarThumbText} numberOfLines={3}>{sim.Name}</Text>
+                  </View>
+                )}
+                <Text style={styles.similarName} numberOfLines={2}>{sim.Name}</Text>
+                {sim.ProductionYear ? (
+                  <Text style={styles.similarYear}>{sim.ProductionYear}</Text>
+                ) : null}
+              </View>
+            </TouchableHighlight>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+};
+
+const SimilarImage = ({ uri, name }: { uri: string; name: string }) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <View style={styles.similarThumbPlaceholder}>
+        <Text style={styles.similarThumbText} numberOfLines={3}>{name}</Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri }}
+      style={styles.similarThumb}
+      resizeMode="cover"
+      onError={() => setFailed(true)}
+    />
   );
 };
 
@@ -635,6 +865,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 30,
   },
+  statValueContinuing: {
+    color: '#5ed9a0',
+  },
+  statValueEnded: {
+    color: '#ff9090',
+  },
   genreRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -730,6 +966,13 @@ const styles = StyleSheet.create({
   },
   actionButtonTextSecondary: {
     color: '#e7f6fb',
+  },
+  actionButtonDestructive: {
+    backgroundColor: 'rgba(220,50,50,0.18)',
+    borderColor: 'rgba(220,50,50,0.55)',
+  },
+  actionButtonTextDestructive: {
+    color: '#ff9090',
   },
   episodesPanel: {
     padding: 28,
@@ -949,6 +1192,128 @@ const styles = StyleSheet.create({
     color: '#8da4b4',
     fontSize: 18,
     marginTop: 14,
+  },
+  extraPanel: {
+    marginTop: 32,
+    padding: 28,
+    borderRadius: 30,
+    backgroundColor: 'rgba(6,15,22,0.74)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  extraPanelHeader: {
+    marginBottom: 20,
+  },
+  directorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  directorLabel: {
+    color: '#8da4b4',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  directorName: {
+    color: '#d7e7ef',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  castList: {
+    paddingBottom: 8,
+    gap: 16,
+  },
+  castCard: {
+    width: 140,
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  castCardFocused: {
+    borderColor: '#5ed9ff',
+    backgroundColor: 'rgba(0,164,220,0.12)',
+  },
+  castThumbBtn: {
+    borderRadius: 70,
+    overflow: 'hidden',
+  },
+  castThumb: {
+    width: 100,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: '#13202b',
+  },
+  castThumbPlaceholder: {
+    width: 100,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: '#13202b',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  castThumbInitial: {
+    color: '#5ed9ff',
+    fontSize: 36,
+    fontWeight: '800',
+  },
+  castName: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  castRole: {
+    color: '#8da4b4',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  similarCard: {
+    width: 180,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  similarCardFocused: {
+    borderColor: '#5ed9ff',
+    transform: [{ scale: 1.04 }],
+  },
+  similarThumb: {
+    width: 180,
+    height: 270,
+    backgroundColor: '#13202b',
+  },
+  similarThumbPlaceholder: {
+    width: 180,
+    height: 270,
+    backgroundColor: '#13202b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
+  },
+  similarThumbText: {
+    color: '#8da4b4',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  similarName: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 8,
+    paddingHorizontal: 6,
+  },
+  similarYear: {
+    color: '#8da4b4',
+    fontSize: 12,
+    marginTop: 2,
+    paddingHorizontal: 6,
+    marginBottom: 6,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,7 @@ const LibraryScreen = ({ route, navigation }: Props) => {
   const { libraryId, libraryName } = route.params;
   const { serverUrl } = useJellyfin();
   const { items, loading, loadingMore, error, loadMore } = useLibraryItems(libraryId);
+  const flatListRef = useRef<FlatList>(null);
 
   const handlePress = useCallback((item: BaseItemDto) => {
     if (item.Type === 'Series') {
@@ -43,12 +44,15 @@ const LibraryScreen = ({ route, navigation }: Props) => {
     }
   }, [navigation]);
 
-  const renderItem = useCallback(({ item }: { item: BaseItemDto }) => (
+  const renderItem = useCallback(({ item, index }: { item: BaseItemDto; index: number }) => (
     <Poster
       id={item.Id!}
       name={item.Name!}
       serverUrl={serverUrl!}
       onPress={() => handlePress(item)}
+      onFocusFn={() => {
+        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      }}
       width={cardWidth}
       height={cardHeight}
     />
@@ -98,6 +102,7 @@ const LibraryScreen = ({ route, navigation }: Props) => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={items}
           numColumns={COLUMNS}
           keyExtractor={item => item.Id!}
@@ -106,6 +111,23 @@ const LibraryScreen = ({ route, navigation }: Props) => {
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
+          onScrollToIndexFailed={info => {
+            const estimatedOffset = info.averageItemLength * info.index;
+
+            flatListRef.current?.scrollToOffset({
+              offset: estimatedOffset,
+              animated: true,
+            });
+
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                flatListRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: true,
+                });
+              }, 50);
+            });
+          }}
         />
       )}
     </View>
@@ -115,8 +137,8 @@ const LibraryScreen = ({ route, navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#101010',
-    padding: 20,
+    backgroundColor: '#0D1117',
+    padding: 24,
   },
   centered: {
     flex: 1,
@@ -126,25 +148,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     gap: 20,
   },
   backBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: 'rgba(79,195,247,0.35)',
+    backgroundColor: 'rgba(79,195,247,0.08)',
   },
   backText: {
-    color: '#00a4dc',
+    color: '#4fc3f7',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '800',
+    color: '#e0f4ff',
+    letterSpacing: 0.2,
   },
   listContent: {
     paddingBottom: 20,
@@ -154,11 +178,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    color: '#ff4444',
+    color: '#ef5350',
     fontSize: 20,
   },
   emptyText: {
-    color: '#666',
+    color: '#78909c',
     fontSize: 20,
   },
 });

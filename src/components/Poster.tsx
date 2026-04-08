@@ -12,6 +12,7 @@ interface PosterProps {
   name: string;
   serverUrl: string;
   onPress: () => void;
+  onFocusFn?: () => void;
   width?: number;
   height?: number;
   imageType?: 'Primary' | 'Thumb' | 'Backdrop';
@@ -25,6 +26,7 @@ const Poster: React.FC<PosterProps> = ({
   name,
   serverUrl,
   onPress,
+  onFocusFn,
   width = 180,
   height = 260,
   imageType = 'Primary',
@@ -63,7 +65,7 @@ const Poster: React.FC<PosterProps> = ({
     <TouchableHighlight
       style={[styles.container, { width, height }, isFocused && styles.focused]}
       onPress={onPress}
-      onFocus={() => setIsFocused(true)}
+      onFocus={() => { setIsFocused(true); onFocusFn?.(); }}
       onBlur={() => setIsFocused(false)}
       underlayColor="transparent"
     >
@@ -97,33 +99,34 @@ const Poster: React.FC<PosterProps> = ({
 const styles = StyleSheet.create({
   container: {
     margin: 10,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#202020',
-    borderWidth: 3,
+    backgroundColor: '#1A2332',
+    borderWidth: 2,
     borderColor: 'transparent',
-    elevation: 5,
+    elevation: 4,
   },
   focused: {
-    borderColor: '#00a4dc',
-    elevation: 12,
+    borderColor: '#4fc3f7',
+    elevation: 14,
+    transform: [{ scale: 1.03 }],
   },
   imageContainer: {
     flex: 1,
   },
   image: {
     flex: 1,
-    borderRadius: 5,
+    borderRadius: 10,
   },
   placeholder: {
     flex: 1,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#1e2d3d',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 12,
   },
   placeholderText: {
-    color: '#aaa',
+    color: '#78909c',
     fontSize: 13,
     textAlign: 'center',
   },
@@ -133,15 +136,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.72)',
   },
   title: {
-    color: '#fff',
+    color: '#e0f4ff',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   subtitle: {
-    color: '#aaa',
+    color: '#90caf9',
     fontSize: 12,
     marginTop: 2,
   },
