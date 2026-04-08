@@ -112,9 +112,20 @@ const LibraryScreen = ({ route, navigation }: Props) => {
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
           onScrollToIndexFailed={info => {
+            const estimatedOffset = info.averageItemLength * info.index;
+
             flatListRef.current?.scrollToOffset({
-              offset: info.averageItemLength * info.index,
+              offset: estimatedOffset,
               animated: true,
+            });
+
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                flatListRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: true,
+                });
+              }, 50);
             });
           }}
         />
