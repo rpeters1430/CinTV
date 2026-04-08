@@ -49,8 +49,9 @@ export const useItemDetails = (itemId: string) => {
           if (mounted) {
             setSimilarItems(similarRes.data.Items ?? []);
           }
-        } catch {
-          // similar items are non-critical
+        } catch (similarError) {
+          // Similar items are non-critical; continue without them
+          console.debug('Failed to fetch similar items:', similarError);
         }
       } catch {
         if (mounted) { setError('Failed to load details'); }
