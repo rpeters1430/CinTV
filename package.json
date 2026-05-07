@@ -19,7 +19,7 @@
     "@react-navigation/native": "^7.2.2",
     "@react-navigation/native-stack": "^7.14.10",
     "lucide-react-native": "^1.7.0",
-    "react": "19.2.5",
+    "react": "19.2.6",
     "react-native": "npm:react-native-tvos@0.83.0-0rc4",
     "react-native-device-info": "^15.0.2",
     "react-native-safe-area-context": "^5.7.0",
@@ -43,7 +43,7 @@
     "eslint": "^10.0.0",
     "jest": "^30.0.0",
     "prettier": "3.8.3",
-    "react-test-renderer": "19.2.5",
+    "react-test-renderer": "19.2.6",
     "typescript": "^6.0.0"
   },
   "engines": {
