@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { JellyfinProvider, useJellyfin } from './src/context/JellyfinContext';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import SearchScreen from './src/screens/SearchScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import DetailsScreen from './src/screens/DetailsScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
@@ -31,6 +32,7 @@ const RootStack = () => {
             ) : (
                 <>
                     <Stack.Screen name="Home" component={HomeScreen} />
+                    <Stack.Screen name="Search" component={SearchScreen} />
                     <Stack.Screen name="Library" component={LibraryScreen} />
                     <Stack.Screen name="Details" component={DetailsScreen} />
                     <Stack.Screen name="Player" component={PlayerScreen} />

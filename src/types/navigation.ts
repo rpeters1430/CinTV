@@ -4,6 +4,7 @@ import type { RouteProp } from '@react-navigation/native';
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
+  Search: undefined;
   Library: { libraryId: string; libraryName: string };
   Details: { itemId: string };
   Player: { itemId: string; title: string };

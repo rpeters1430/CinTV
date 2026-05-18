@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useJellyfin } from '../context/JellyfinContext';
 import type { NavProp } from '../types/navigation';
+import Sidebar from '../components/Sidebar';
 
 interface Props {
   navigation: NavProp<'Settings'>;
@@ -60,7 +61,6 @@ const SettingButton = ({ label, onPress, destructive }: SettingButtonProps) => {
 
 const SettingsScreen = ({ navigation }: Props) => {
   const { serverUrl, logout } = useJellyfin();
-  const [isBackFocused, setIsBackFocused] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -79,53 +79,47 @@ const SettingsScreen = ({ navigation }: Props) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <TouchableHighlight
-          style={[styles.backBtn, isBackFocused && styles.backBtnFocused]}
-          onPress={() => navigation.goBack()}
-          onFocus={() => setIsBackFocused(true)}
-          onBlur={() => setIsBackFocused(false)}
-          underlayColor="rgba(255,255,255,0.12)"
-        >
-          <Text style={[styles.backText, isBackFocused && styles.backTextFocused]}>← Back</Text>
-        </TouchableHighlight>
+      <Sidebar active="Settings" />
+      
+      <View style={styles.mainContent}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.screenTitle}>Settings</Text>
 
-        <Text style={styles.screenTitle}>Settings</Text>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Server</Text>
-          <View style={styles.card}>
-            <SettingRow label="Server URL" description="The Jellyfin server this app is connected to">
-              <Text style={styles.settingValue} numberOfLines={1}>{serverUrl ?? 'Not configured'}</Text>
-            </SettingRow>
-            <View style={styles.divider} />
-            <View style={styles.settingRow}>
-              <SettingButton
-                label="Change Server / Log Out"
-                onPress={handleLogout}
-                destructive
-              />
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Server</Text>
+            <View style={styles.card}>
+              <SettingRow label="Server URL" description="The Jellyfin server this app is connected to">
+                <Text style={styles.settingValue} numberOfLines={1}>{serverUrl ?? 'Not configured'}</Text>
+              </SettingRow>
+              <View style={styles.divider} />
+              <View style={styles.settingRow}>
+                <SettingButton
+                  label="Change Server / Log Out"
+                  onPress={handleLogout}
+                  destructive
+                />
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <View style={styles.card}>
-            <SettingRow label="App Name">
-              <Text style={styles.settingValue}>CinTV</Text>
-            </SettingRow>
-            <View style={styles.divider} />
-            <SettingRow label="Version">
-              <Text style={styles.settingValue}>1.0.0</Text>
-            </SettingRow>
-            <View style={styles.divider} />
-            <SettingRow label="Media Server">
-              <Text style={styles.settingValue}>Jellyfin</Text>
-            </SettingRow>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About</Text>
+            <View style={styles.card}>
+              <SettingRow label="App Name">
+                <Text style={styles.settingValue}>CinTV</Text>
+              </SettingRow>
+              <View style={styles.divider} />
+              <SettingRow label="Version">
+                <Text style={styles.settingValue}>1.0.0</Text>
+              </SettingRow>
+              <View style={styles.divider} />
+              <SettingRow label="Media Server">
+                <Text style={styles.settingValue}>Jellyfin</Text>
+              </SettingRow>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -134,34 +128,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#071017',
+    flexDirection: 'row',
+  },
+  mainContent: {
+    flex: 1,
   },
   content: {
     paddingHorizontal: 56,
-    paddingTop: 30,
+    paddingTop: 60,
     paddingBottom: 72,
-  },
-  backBtn: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 999,
-    marginBottom: 28,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: 'rgba(7,16,23,0.72)',
-  },
-  backBtnFocused: {
-    borderColor: '#5ed9ff',
-    backgroundColor: 'rgba(94,217,255,0.18)',
-    transform: [{ scale: 1.04 }],
-  },
-  backText: {
-    color: '#5ed9ff',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  backTextFocused: {
-    color: '#fff',
   },
   screenTitle: {
     color: '#fff',

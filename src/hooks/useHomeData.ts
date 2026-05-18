@@ -21,6 +21,19 @@ const EXCLUDED_TYPES = new Set([
 const filterPlayableItems = (items: BaseItemDto[]) =>
   items.filter(item => item.Id && !EXCLUDED_TYPES.has(item.Type ?? ''));
 
+const HERO_FIELDS = [
+  'PrimaryImageAspectRatio',
+  'UserData',
+  'SeriesInfo',
+  'Overview',
+  'ProductionYear',
+  'CommunityRating',
+  'OfficialRating',
+  'Taglines',
+  'Genres',
+  'RunTimeTicks',
+];
+
 export const useHomeData = () => {
   const { api, userId, serverUrl, accessToken } = useJellyfin();
   const [libraries, setLibraries] = useState<BaseItemDto[]>([]);
@@ -46,7 +59,7 @@ export const useHomeData = () => {
             filters: ['IsResumable'],
             mediaTypes: ['Video'],
             recursive: true,
-            fields: ['PrimaryImageAspectRatio', 'UserData', 'SeriesInfo'],
+            fields: HERO_FIELDS as any,
             limit: 20,
             sortBy: ['DatePlayed'],
             sortOrder: ['Descending'],
@@ -54,7 +67,7 @@ export const useHomeData = () => {
           tvApi.getNextUp({
             userId,
             limit: 20,
-            fields: ['PrimaryImageAspectRatio', 'SeriesInfo'],
+            fields: HERO_FIELDS as any,
           }),
         ]);
 
@@ -69,7 +82,7 @@ export const useHomeData = () => {
                 Limit: '20',
                 SortBy: 'DateCreated',
                 SortOrder: 'Descending',
-                Fields: 'PrimaryImageAspectRatio,DateCreated',
+                Fields: HERO_FIELDS.join(','),
                 IncludeItemTypes: 'Movie,Episode,Video',
               });
               const res = await fetch(
