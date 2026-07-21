@@ -43,7 +43,7 @@
     "eslint": "^10.0.0",
     "jest": "^30.0.0",
     "prettier": "3.9.5",
-    "react-test-renderer": "19.2.7",
+    "react-test-renderer": "19.2.8",
     "typescript": "^7.0.0"
   },
   "engines": {
