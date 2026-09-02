@@ -12,18 +12,6 @@ on:
         required: false
         type: 'string'
         default: ''
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'Pull request number to review'
-        required: true
-        type: 'number'
-      additional_context:
-        description: 'Optional extra review instructions'
-        required: false
-        type: 'string'
-        default: ''
-
 concurrency:
   group: '${{ github.workflow }}-${{ inputs.pr_number || github.run_id }}'
   cancel-in-progress: true
