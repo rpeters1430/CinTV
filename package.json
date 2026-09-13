@@ -13,7 +13,7 @@
     "verify:cloud": "bash scripts/codex-cloud-verify.sh"
   },
   "dependencies": {
-    "@jellyfin/sdk": "^0.13.0",
+    "@jellyfin/sdk": "^1.0.0",
     "@react-native-async-storage/async-storage": "^3.0.2",
     "@react-native/new-app-screen": "0.87.1",
     "@react-navigation/native": "^7.2.2",
